@@ -1,10 +1,10 @@
+
 import streamlit as st
-import sqlite3
-import time
+import sqlite3, time
 from datetime import datetime, timezone
 from pathlib import Path
 
-APP_TITLE = "Pop Ant 🐜 — Clicker"
+APP_TITLE = "Pop Ant 🐜 — Click the Ant!"
 DB_PATH = Path("clicks.db")
 
 st.set_page_config(page_title="Pop Ant Clicker", page_icon="🐜", layout="centered")
@@ -12,29 +12,28 @@ st.set_page_config(page_title="Pop Ant Clicker", page_icon="🐜", layout="cente
 # ---------- Utilities ----------
 def get_db_conn():
     conn = sqlite3.connect(DB_PATH)
-    conn.execute("""CREATE TABLE IF NOT EXISTS ip_totals (
+    conn.execute('''CREATE TABLE IF NOT EXISTS ip_totals (
         ip TEXT PRIMARY KEY,
         count INTEGER NOT NULL DEFAULT 0,
         updated_at TIMESTAMP NOT NULL
-    )""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS click_log (
+    )''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS click_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         ip TEXT,
         at TIMESTAMP NOT NULL,
         agent TEXT,
         note TEXT
-    )""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS meta (
+    )''')
+    conn.execute('''CREATE TABLE IF NOT EXISTS meta (
         k TEXT PRIMARY KEY,
         v TEXT
-    )""")
+    )''')
     conn.execute("INSERT OR IGNORE INTO meta(k,v) VALUES('global_total','0')")
     conn.commit()
     return conn
 
 def get_global_total(conn):
-    cur = conn.execute("SELECT v FROM meta WHERE k='global_total'")
-    row = cur.fetchone()
+    row = conn.execute("SELECT v FROM meta WHERE k='global_total'").fetchone()
     return int(row[0]) if row else 0
 
 def set_global_total(conn, value:int):
@@ -55,10 +54,6 @@ def increment_counts(conn, ip:str|None, agent:str|None):
     conn.commit()
     return total
 
-@st.cache_data(show_spinner=False)
-def get_svg_text(name:str):
-    return Path("assets")/name
-
 def get_client_ip():
     ip = st.session_state.get("client_ip")
     if ip:
@@ -68,8 +63,7 @@ def get_client_ip():
         hdrs = _get_websocket_headers()
         fwd = hdrs.get("X-Forwarded-For") or hdrs.get("x-forwarded-for")
         if fwd:
-            ip = fwd.split(",")[0].strip()
-            return ip
+            return fwd.split(",")[0].strip()
     except Exception:
         pass
     return None
@@ -83,31 +77,32 @@ def display_leaderboard(conn, top_n=10):
     for i, (ip, cnt) in enumerate(rows, start=1):
         st.write(f"{i}. `{ip}` — **{cnt:,}**")
 
-# ---------- UI ----------
-st.title(APP_TITLE)
-st.caption("มดแดงพุงอ้วน กลมเด้งได้ คลิกแล้วนับ + เก็บ IP")
-
-# Basic CSS (center + belly bounce)
-st.markdown("""
+# ---------- Styles ----------
+st.markdown('''
 <style>
-.ant-wrap { display:block; margin: 0 auto; text-align:center; }
-#belly { transform-origin: 160px 205px; } /* center of belly ellipse */
+.page { text-align:center; }
+.ant-wrap { display:inline-block; cursor:pointer; user-select:none; }
+#belly { transform-origin: 180px 245px; }
 .pop { animation: belly-pop 220ms ease-out 1; }
 @keyframes belly-pop {
   0%   { transform: scale(1); }
-  50%  { transform: scale(1.12); }
+  50%  { transform: scale(1.14); }
   100% { transform: scale(1); }
 }
 </style>
-""", unsafe_allow_html=True)
+''', unsafe_allow_html=True)
 
-# IP info (non-intrusive)
+# ---------- Header ----------
+st.title(APP_TITLE)
+st.caption("คลิกที่ **ตัวมด** ได้เลย ไม่ต้องกดปุ่ม")
+
+# ---------- IP via JS ----------
 with st.sidebar:
     st.header("📡 Your Info")
     ip_placeholder = st.empty()
     agent_placeholder = st.empty()
 
-ip_js = """
+ip_js = '''
 async function getInfo(){
   try{
     const r = await fetch("https://api.ipify.org?format=json");
@@ -118,7 +113,7 @@ async function getInfo(){
   }
 }
 getInfo();
-"""
+'''
 try:
     from streamlit_js_eval import streamlit_js_eval
     info = streamlit_js_eval(js_expressions=ip_js, key="ip_js_call")
@@ -135,34 +130,50 @@ if client_ip:
 else:
     ip_placeholder.write("IP: ไม่ทราบ (anonymous)")
 
-# DB
+# ---------- DB ----------
 conn = get_db_conn()
 
-# Session state
-if "belly_pop" not in st.session_state:
-    st.session_state["belly_pop"] = False
-
-# Load SVGs (red ant)
-ant_closed = Path("assets/ant-red-closed.svg").read_text(encoding="utf-8")
-ant_open   = Path("assets/ant-red-open.svg").read_text(encoding="utf-8")
-
-svg = ant_open if st.session_state["belly_pop"] else ant_closed
-# Add 'pop' class to #belly when clicked previously to show the animation
-if st.session_state["belly_pop"]:
-    svg = svg.replace('id="belly"', 'id="belly" class="pop"')
-
-# Render SVG centered (no stray HTML like </div>)
-st.markdown(f'<div class="ant-wrap">{svg}</div>', unsafe_allow_html=True)
-
-clicked = st.button("🐜 POP!", use_container_width=True, type="primary")
-if clicked:
-    # trigger animation and count
-    st.session_state["belly_pop"] = True
+# ---------- Click routing via query param ----------
+qp = st.query_params
+clicked_token = qp.get("clicked", None)
+last_token = st.session_state.get("last_clicked_token")
+if clicked_token and clicked_token != last_token:
+    st.session_state["last_clicked_token"] = clicked_token
     total = increment_counts(conn, client_ip, st.session_state.get("agent_str"))
     st.toast(f"Pop! รวมทั้งหมด {total:,}")
-    # brief wait so users see the bounce
-    time.sleep(0.08)
-    st.session_state["belly_pop"] = False
+    qp.clear()
+    st.rerun()
+
+# ---------- SVGs (orange mascot-like ant) ----------
+ant_closed = Path("assets/ant-orange-closed.svg").read_text(encoding="utf-8")
+ant_open   = Path("assets/ant-orange-open.svg").read_text(encoding="utf-8")
+
+# toggle class for pop animation
+pop_state = st.session_state.get("animate", False)
+svg = (ant_open if pop_state else ant_closed)
+if pop_state:
+    svg = svg.replace('id="belly"', 'id="belly" class="pop"')
+st.session_state["animate"] = False
+
+# ---------- Render clickable ANT ----------
+html = f'''
+<div class="page">
+  <div class="ant-wrap" id="antWrap">
+    {svg}
+  </div>
+</div>
+<script>
+  const ant = document.getElementById('antWrap');
+  if (ant) {{
+    ant.addEventListener('click', ()=>{{
+      const u = new URL(window.location);
+      u.searchParams.set('clicked', Date.now().toString());
+      window.location.replace(u.toString());
+    }});
+  }}
+</script>
+'''
+st.components.v1.html(html, height=540, scrolling=False)
 
 with st.expander("📈 สถิติ"):
     total = get_global_total(conn)
@@ -173,4 +184,4 @@ with st.expander("📈 สถิติ"):
         st.metric("ของคุณ (ตาม IP)", f"{my:,}")
     display_leaderboard(conn, top_n=10)
 
-st.caption("หมายเหตุ: ดึง Public IP ผ่าน ipify; ถ้าเรียกไม่ได้จะเก็บแบบ anonymous. HTML ถูกย่อให้ไม่มีแท็กหลงเหลือ (เช่น </div>).")
+st.caption("หมายเหตุ: คลิกที่ตัวมดโดยตรงเพื่อเพิ่มจำนวน ใช้ query param เพื่อแจ้งเหตุการณ์คลิกให้เซิร์ฟเวอร์.")
