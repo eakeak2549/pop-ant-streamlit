@@ -1,0 +1,29 @@
+
+<svg width="360" height="360" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.25"/>
+    </filter>
+    <radialGradient id="redBelly" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#ff7b7b"/>
+      <stop offset="60%" stop-color="#e64141"/>
+      <stop offset="100%" stop-color="#b32020"/>
+    </radialGradient>
+  </defs>
+  <g filter="url(#s)">
+    <ellipse cx="160" cy="150" rx="120" ry="90" fill="#2b0f0f"/>
+    <ellipse id="belly" cx="160" cy="205" rx="120" ry="80" fill="url(#redBelly)"/>
+    <circle cx="120" cy="150" r="10" fill="white"/>
+    <circle cx="200" cy="150" r="10" fill="white"/>
+    <circle cx="120" cy="150" r="5" fill="#111"/>
+    <circle cx="200" cy="150" r="5" fill="#111"/>
+    <!-- wide smile -->
+    <path d="M100 210 Q160 265 220 210" stroke="#111" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <path d="M160 235 q-18 -10 0 -20 q18 10 0 20z" fill="#ff5f5f"/>
+    <path d="M70 120 Q100 110 120 120" stroke="#5a1d1d" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <path d="M200 120 Q220 110 250 120" stroke="#5a1d1d" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <ellipse cx="160" cy="90" rx="40" ry="20" fill="#2b0f0f"/>
+    <path d="M160 20 L180 85" stroke="#2b0f0f" stroke-width="10" stroke-linecap="round"/>
+    <path d="M160 20 L140 85" stroke="#2b0f0f" stroke-width="10" stroke-linecap="round"/>
+  </g>
+</svg>
